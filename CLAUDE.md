@@ -36,6 +36,16 @@ helm registry login ghcr.io -u <username> -p <token>
 
 All lint/test scripts pass `--set secrets.openclawGatewayToken=lint-token` automatically to satisfy the required secret validation.
 
+## Version Bump
+
+Follow these steps to release a new chart version:
+
+1. **Update chart version** — Bump `version` in `Chart.yaml` (e.g., `0.1.11` → `0.1.12`).
+2. **Update changelog** — Compare commits since the last version tag (`git log v<previous>..HEAD --oneline`) and add a summary to `CHANGELOG.md` following the existing format (date, bullet points describing changes).
+3. **Commit** — Stage `Chart.yaml` and `CHANGELOG.md`, commit with message `chore: bump chart version to <new-version>`.
+4. **Tag** — Create an annotated tag: `git tag v<new-version>`.
+5. **Push** — Ask the user whether to push the main branch and new tag (`git push origin main && git push origin v<new-version>`).
+
 ## Architecture
 
 ### Two-Component Design
