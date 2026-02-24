@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.14 (2026-02-24)
+
+- Skip slow `chown -R` on subsequent Pod restarts in init-home container
+
 ## v0.1.13 (2026-02-24)
 
 - Add compaction config with memoryFlush to agent defaults
