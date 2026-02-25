@@ -90,6 +90,68 @@ Environment variables:
 
 </details>
 
+## Memory
+
+OpenClaw supports **semantic memory search** over the agent workspace (`MEMORY.md` + `memory/*.md` + session transcripts). When configured, the agent can recall prior conversations, decisions, and notes using natural-language queries via the `memory_search` tool.
+
+Memory search requires an **embedding service** (e.g. OpenAI, Gemini) to generate vector embeddings for indexed content. Configure it via `openclaw.memorySearch.*` values:
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --create-namespace --namespace openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set litellm.secrets.provider=anthropic \
+  --set litellm.secrets.apiKey=<your-api-key> \
+  --set litellm.secrets.apiBase=<your-api-base> \
+  --set litellm.model=claude-opus-4.6 \
+  --set secrets.telegramBotToken=$telegramBotToken \
+  --set openclaw.memorySearch.baseUrl=https://api.openai.com/v1/ \
+  --set openclaw.memorySearch.apiKey=<your-openai-api-key>
+```
+
+<details>
+<summary>Configuration details</summary>
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| `openclaw.memorySearch.provider` | `openai` | Embedding provider (`openai`, `gemini`, `voyage`, `mistral`) |
+| `openclaw.memorySearch.model` | `text-embedding-3-small` | Embedding model name |
+| `openclaw.memorySearch.baseUrl` | `""` | Remote embedding service URL (**required** to enable memory search) |
+| `openclaw.memorySearch.apiKey` | `""` | API key for the embedding service (**required** to enable memory search) |
+| `openclaw.memorySearch.extraPaths` | `[]` | Additional paths to index (directories or files, Markdown only) |
+
+Memory search is **only enabled** when both `baseUrl` and `apiKey` are provided. When enabled, the chart automatically configures:
+
+- **Hybrid search** (BM25 keyword + vector similarity) with 70/30 weighting
+- **Embedding cache** (up to 50,000 entries) to avoid re-embedding unchanged content
+- **Session memory** indexing for conversation recall
+- **File watching** for automatic re-indexing on workspace changes
+
+</details>
+
+<details>
+<summary>Index and status commands</summary>
+
+After deploying with memory search enabled, it is recommended to use these commands to manage the memory index (especially when you have set memorySearch.extraPaths) :
+
+**Build the index** (run after first adding files to the workspace):
+
+```bash
+kubectl -n openclaw exec -it openclaw-0 -- openclaw memory index --verbose
+```
+
+This scans `MEMORY.md`, `memory/*.md`, and any `extraPaths`, generates embeddings, and stores them in a local SQLite database. The `--verbose` flag prints per-phase details including provider, model, sources, and batch activity.
+
+**Check memory status:**
+
+```bash
+kubectl -n openclaw exec -it openclaw-0 -- openclaw memory status
+```
+
+Shows the current state of the memory index: indexed file count, embedding provider/model, store location, and whether the index is up-to-date. Add `--deep` to probe vector and embedding availability, or `--deep --index` to also trigger a reindex if the store is dirty.
+
+</details>
+
 ## Upgrade / Uninstall
 
 ```bash
