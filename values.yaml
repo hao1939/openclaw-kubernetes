@@ -263,6 +263,12 @@ secrets:
   perplexityApiKey: ""
   # -- Gateway authentication token
   openclawGatewayToken: ""
+  # -- Telegram bot token file path (alternative to telegramBotToken).
+  # When set, the gateway reads the bot token from this file at startup.
+  # More secure than env vars — token is not visible in pod specs.
+  # The file must be mounted into the container (e.g. via extraVolumeMounts
+  # from a Secret volume). Example: /etc/openclaw-secrets/telegram-bot-token
+  telegramTokenFile: ""
 
 # -- Liveness probe configuration
 livenessProbe:

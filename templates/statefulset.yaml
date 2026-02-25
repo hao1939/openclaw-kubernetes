@@ -78,6 +78,12 @@ spec:
               value: ":99"
             - name: OPENCLAW_STATE_DIR
               value: "/home/vibe/.openclaw"
+            # Node 22+ enables Happy Eyeballs (autoSelectFamily) by default.
+            # When IPv6 is configured but unreachable, this causes ENETUNREACH
+            # errors before IPv4 can connect (~900ms to api.telegram.org and
+            # other external services). Force IPv4-first to avoid this.
+            - name: NODE_OPTIONS
+              value: "--dns-result-order=ipv4first"
             {{- if .Values.secrets.existingSecret }}
             # Messaging channel tokens from existing secret
             - name: DISCORD_BOT_TOKEN

@@ -370,11 +370,30 @@ helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
 | Value | Environment Variable | Description |
 |-------|---------------------|-------------|
 | `secrets.telegramBotToken` | `TELEGRAM_BOT_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) |
+| `secrets.telegramTokenFile` | — | File path to read bot token from (alternative to env var) |
 
 ```bash
 helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
   --set secrets.openclawGatewayToken=$gatewayToken \
   --set secrets.telegramBotToken=<your-telegram-bot-token>
+```
+
+For production deployments, consider using `telegramTokenFile` instead of `telegramBotToken` to avoid exposing the token in pod specs. Mount a Kubernetes Secret as a file and point `telegramTokenFile` to it:
+
+```bash
+# Create a secret with the token file
+kubectl -n openclaw create secret generic telegram-token \
+  --from-literal=token=<your-telegram-bot-token>
+
+# Install with tokenFile + volume mount
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set secrets.telegramTokenFile=/etc/openclaw-secrets/token \
+  --set 'extraVolumes[0].name=telegram-token' \
+  --set 'extraVolumes[0].secret.secretName=telegram-token' \
+  --set 'extraVolumeMounts[0].name=telegram-token' \
+  --set 'extraVolumeMounts[0].mountPath=/etc/openclaw-secrets' \
+  --set 'extraVolumeMounts[0].readOnly=true'
 ```
 
 📖 [Telegram Setup Guide](https://docs.openclaw.ai/channels/telegram)
@@ -515,6 +534,31 @@ Bump `Chart.yaml` version before each release; OCI registries reject duplicate v
 </details>
 
 ## FAQ
+
+<details>
+<summary>Telegram fails with ENETUNREACH or network errors</summary>
+
+On dual-stack clusters (IPv4 + IPv6), Node 22+ enables Happy Eyeballs (`autoSelectFamily`) which tries IPv6 first. If IPv6 is configured but unreachable, connections to `api.telegram.org` fail with `ENETUNREACH` before IPv4 can connect.
+
+The chart handles this automatically via two mechanisms:
+1. `NODE_OPTIONS=--dns-result-order=ipv4first` in the container env
+2. `channels.telegram.network.autoSelectFamily: false` in `openclaw.json`
+
+If you use a custom `openclaw.json` (not chart-managed), add the network config manually:
+
+```json
+{
+  "channels": {
+    "telegram": {
+      "network": {
+        "autoSelectFamily": false
+      }
+    }
+  }
+}
+```
+
+</details>
 
 <details>
 <summary>How to use a free model?</summary>

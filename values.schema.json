@@ -464,6 +464,10 @@
           "type": "string",
           "description": "Telegram bot token"
         },
+        "telegramTokenFile": {
+          "type": "string",
+          "description": "File path to read Telegram bot token from (alternative to telegramBotToken)"
+        },
         "slackBotToken": {
           "type": "string",
           "description": "Slack bot token"

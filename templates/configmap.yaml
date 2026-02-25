@@ -89,6 +89,22 @@ data:
     {{- if $pluginEntries }}
     {{- $_ := set $config "plugins" (dict "entries" $pluginEntries) }}
     {{- end }}
+    {{- /* Fix Telegram connectivity on dual-stack (IPv4+IPv6) clusters.
+       Node 22+ enables Happy Eyeballs (autoSelectFamily) by default, which
+       causes ENETUNREACH when IPv6 is configured but unreachable. Disable
+       autoSelectFamily at the config level so it applies to both gateway
+       and embedded agent modes. */}}
+    {{- $channels := dig "channels" (dict) $config }}
+    {{- $telegram := dig "telegram" (dict) $channels }}
+    {{- $network := dig "network" (dict) $telegram }}
+    {{- $_ := set $network "autoSelectFamily" false }}
+    {{- $_ := set $telegram "network" $network }}
+    {{- /* Support tokenFile for Telegram (reads bot token from file instead of env var) */}}
+    {{- if .Values.secrets.telegramTokenFile }}
+    {{- $_ := set $telegram "tokenFile" .Values.secrets.telegramTokenFile }}
+    {{- end }}
+    {{- $_ := set $channels "telegram" $telegram }}
+    {{- $_ := set $config "channels" $channels }}
 {{ $config | toPrettyJson | indent 4 }}
   codex-config.toml: |
     # Codex CLI Configuration
