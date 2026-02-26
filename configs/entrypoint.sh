@@ -55,6 +55,15 @@ stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
+[program:chrome]
+command=google-chrome --no-sandbox --disable-gpu --no-first-run --disable-dev-shm-usage --start-maximized --remote-debugging-port=18800 --user-data-dir=/home/vibe/.config/google-chrome/openclaw
+priority=35
+autorestart=true
+startretries=5
+startsecs=3
+stdout_logfile=/dev/null
+stderr_logfile=/dev/null
+
 [program:openclaw]
 command=openclaw gateway $* --allow-unconfigured
 priority=40
