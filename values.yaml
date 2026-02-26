@@ -103,6 +103,17 @@ ingress:
   #    hosts:
   #      - openclaw.local
 
+# -- noVNC configuration (remote desktop access via browser)
+novnc:
+  ingress:
+    # -- Enable noVNC ingress routes (requires ingress.enabled)
+    # Creates two additional ingress resources:
+    #   1. Web assets: <pathPrefix>/* -> websockify web server (port 6080)
+    #   2. WebSocket: /websockify -> websockify (port 6080)
+    enabled: false
+    # -- URL path prefix for the noVNC web UI (e.g. /vnc/vnc.html)
+    pathPrefix: /vnc
+
 # -- Resource requests and limits
 resources:
   # -- Resource limits
@@ -213,7 +224,7 @@ openclaw:
       executablePath: "/usr/bin/google-chrome"
       headless: false
       noSandbox: true
-      attachOnly: false
+      attachOnly: true
       defaultProfile: "openclaw"
       profiles:
         openclaw:
