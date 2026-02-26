@@ -123,7 +123,7 @@ data:
     model = {{ .Values.litellm.model | quote }}
     model_provider = "litellm"
     model_verbosity = "medium"
-    approval_policy = "on-failure"
+    approval_policy = "never"
     sandbox_mode = "workspace-write"
     model_reasoning_effort = "high"
     suppress_unstable_features_warning = true
@@ -133,7 +133,7 @@ data:
     skills = true
     unified_exec = true
     shell_snapshot = true
-    collab = true
+    multi_agent = true
     steer = true
     collaboration_modes = true
     personality = true

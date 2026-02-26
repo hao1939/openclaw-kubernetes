@@ -78,9 +78,7 @@ RUN groupadd --gid 1024 vibe && \
 RUN mkdir -p /usr/local/share/npm-global && \
   chown -R vibe:vibe /usr/local/share
 
-# Create workspace and config directories and set permissions
-RUN mkdir -p /workspace && chown -R vibe:vibe /workspace
-WORKDIR /workspace
+WORKDIR /home/vibe
 
 # Set up non-root user
 USER vibe
