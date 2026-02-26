@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.20 (2026-02-26)
+
+- Add noVNC ingress routes: creates separate ingress resources for the noVNC web UI (`/vnc/(.*)` → port 6080 with rewrite) and WebSocket (`/websockify` → port 6080) when `novnc.ingress.enabled`; the dedicated WebSocket route prevents noVNC's absolute `/websockify` path from hitting the gateway ingress and failing
+- Set `browser.attachOnly=true` in default config so OpenClaw attaches to the supervisord-managed Chrome instance instead of launching its own
+- Add Azure Workload Identity support: new `azureWorkloadIdentity.enabled/clientId` values; when enabled, annotates the service account with `azure.workload.identity/client-id`, labels the pod with `azure.workload.identity/use`, and forces `automountServiceAccountToken: true` (required for token projection); prerequisites: AKS cluster with OIDC issuer + workload identity enabled and a federated credential linking the managed identity to the service account
+
 ## v0.1.19 (2026-02-26)
 
 - Remove `helm.sh/resource-policy: keep` annotation from both secret templates so secrets follow normal Helm lifecycle
