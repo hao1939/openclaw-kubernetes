@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.21 (2026-02-27)
+
+- Pin npm packages in Dockerfile: `openclaw@2026.2.26`, `clawhub@0.7.0` with ARG declarations for build-time overrides
+- Pin LiteLLM image from `main-latest` to `main-v1.81.12-stable.1` across all values files
+- Set `appVersion` to match chart version (previously `latest`); development/minimal values files now use `tag: ""` to inherit appVersion
+
 ## v0.1.20 (2026-02-26)
 
 - Add noVNC ingress routes: creates separate ingress resources for the noVNC web UI (`/vnc/(.*)` → port 6080 with rewrite) and WebSocket (`/websockify` → port 6080) when `novnc.ingress.enabled`; the dedicated WebSocket route prevents noVNC's absolute `/websockify` path from hitting the gateway ingress and failing
