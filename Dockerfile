@@ -4,6 +4,8 @@ LABEL org.opencontainers.image.source="https://github.com/feiskyer/openclaw-kube
 LABEL org.opencontainers.image.description="All-in-one vibe coding environment"
 LABEL org.opencontainers.image.licenses="MIT"
 
+ARG OPENCLAW_VERSION=2026.2.26
+ARG CLAWHUB_VERSION=0.7.0
 ARG TZ=UTC
 ENV TZ="$TZ"
 
@@ -95,7 +97,7 @@ ENV SHELL=/bin/zsh
 ENV CODEX_UNSAFE_ALLOW_NO_SANDBOX=1
 
 # Install npm global tools
-RUN npm install -g @openai/codex openclaw clawhub && \
+RUN npm install -g @openai/codex openclaw@${OPENCLAW_VERSION} clawhub@${CLAWHUB_VERSION} && \
   npm cache clean --force
 
 # Install uv via official installer
