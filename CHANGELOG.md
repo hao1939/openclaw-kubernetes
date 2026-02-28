@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.23 (2026-02-28)
+
+- Fix init script breaking first-run PVC seeding: skills sync before sentinel check created `.openclaw/` early, causing the skeleton copy (`cp -r /home/vibe/. /home-data/`) to be skipped — resulting in missing `.zshrc`, `claude` CLI, and other dotfiles; moved skills sync inside the sentinel block so it only runs on subsequent boots
+
 ## v0.1.22 (2026-02-28)
 
 - Add built-in skills support: ship `claude-skill` and `codex-skill` in the container image at `~/.openclaw/skills/`, teaching the OpenClaw agent how to operate Claude Code and Codex CLI as managed coding sub-agents
