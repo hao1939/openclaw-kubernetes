@@ -90,6 +90,41 @@ Environment variables:
 
 </details>
 
+## Skills
+
+The container image ships with built-in **skills** — structured instruction sets that teach the OpenClaw agent how to operate external coding tools as managed sub-agents. Skills are installed at `~/.openclaw/skills/` inside the container.
+
+### Included Skills
+
+| Skill | Description |
+|-------|-------------|
+| `claude-skill` | Operate Claude Code as a managed coding agent (worktree isolation, tmux sessions, smart retries) |
+| `codex-skill` | Operate Codex CLI as a managed coding agent (same workflow, Codex-specific flags) |
+
+Built-in skills are synced from the container image to the persistent volume on every pod start, so upgrading the chart or image automatically updates them.
+
+### Adding Custom Skills
+
+Add custom skills by placing them in the persistent volume at `~/.openclaw/skills/<skill-name>/`. You can copy them into the running pod:
+
+```bash
+kubectl -n openclaw cp ./my-skill openclaw-0:/home/vibe/.openclaw/skills/my-skill
+```
+
+Alternatively, mount a ConfigMap as a skill directory via `extraVolumes` and `extraVolumeMounts`. This works for simple skills consisting of a single `SKILL.md`:
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set 'extraVolumes[0].name=custom-skills' \
+  --set 'extraVolumes[0].configMap.name=my-skills' \
+  --set 'extraVolumeMounts[0].name=custom-skills' \
+  --set 'extraVolumeMounts[0].mountPath=/home/vibe/.openclaw/skills/my-skill' \
+  --set 'extraVolumeMounts[0].readOnly=true'
+```
+
+See [`skills/README.md`](skills/README.md) for skill structure and authoring details.
+
 ## Memory
 
 OpenClaw supports **semantic memory search** over the agent workspace (`MEMORY.md` + `memory/*.md` + session transcripts). When configured, the agent can recall prior conversations, decisions, and notes using natural-language queries via the `memory_search` tool.

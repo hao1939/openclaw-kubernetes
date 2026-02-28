@@ -129,5 +129,8 @@ EXPOSE 6080
 # Copy entrypoint script
 COPY --chown=vibe:vibe configs/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+# Copy skills into the OpenClaw skills directory (last COPY — skills change most often)
+COPY --chown=vibe:vibe skills/ /home/vibe/.openclaw/skills/
+
 # Entrypoint starts supervisord (manages Xvfb, VNC, noVNC, openclaw)
 ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]

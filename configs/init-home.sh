@@ -3,7 +3,19 @@ set -e
 
 SENTINEL="/home-data/.openclaw/.initialized"
 
-# Skip entirely if already initialized — fast restart path
+# Seed built-in skills from image (only copies new skills, never overwrites existing)
+if [ -d /home/vibe/.openclaw/skills ]; then
+  mkdir -p /home-data/.openclaw/skills
+  for skill in /home/vibe/.openclaw/skills/*/; do
+    skill_name=$(basename "$skill")
+    if [ ! -d "/home-data/.openclaw/skills/$skill_name" ]; then
+      cp -r "$skill" "/home-data/.openclaw/skills/$skill_name"
+      chown -R 1024:1024 "/home-data/.openclaw/skills/$skill_name"
+    fi
+  done
+fi
+
+# Skip first-run seeding if already initialized — fast restart path
 if [ -f "$SENTINEL" ]; then
   exit 0
 fi
