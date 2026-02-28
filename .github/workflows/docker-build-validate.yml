@@ -33,3 +33,5 @@ jobs:
           platforms: linux/amd64
           push: false
           tags: openclaw-gateway:validation
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
