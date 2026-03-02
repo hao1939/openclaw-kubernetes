@@ -46,6 +46,46 @@ Follow these steps to release a new chart version:
 4. **Tag** — Create an annotated tag: `git tag v<new-version>`.
 5. **Push** — Ask the user whether to push the main branch and new tag (`git push origin main && git push origin v<new-version>`).
 
+## Bump Dependencies
+
+These dependencies are not covered by Dependabot and must be bumped manually.
+
+### 1. LiteLLM image (`values.yaml`)
+
+```bash
+# Check latest stable tags from GHCR
+TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:berriai/litellm:pull" | jq -r .token)
+curl -s -H "Authorization: Bearer $TOKEN" "https://ghcr.io/v2/berriai/litellm/tags/list" \
+  | jq -r '.tags[]' | grep '^main-v.*-stable' | sort -V | tail -5
+```
+
+Update `litellm.image.tag` in `values.yaml`.
+
+### 2. openclaw npm package (`Dockerfile`)
+
+```bash
+npm view openclaw version
+```
+
+Update `ARG OPENCLAW_VERSION=` in `Dockerfile`.
+
+### 3. clawhub npm package (`Dockerfile`)
+
+```bash
+npm view clawhub version
+```
+
+Update `ARG CLAWHUB_VERSION=` in `Dockerfile`.
+
+### After updating
+
+Run lint and template tests to verify correctness:
+
+```bash
+./scripts/helm-lint.sh
+./scripts/helm-test.sh
+```
+
 ## Architecture
 
 ### Two-Component Design
