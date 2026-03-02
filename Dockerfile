@@ -1,4 +1,4 @@
-FROM node:24-slim
+FROM node:25-slim
 
 LABEL org.opencontainers.image.source="https://github.com/feiskyer/openclaw-kubernetes"
 LABEL org.opencontainers.image.description="All-in-one vibe coding environment"
