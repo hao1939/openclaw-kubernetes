@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to AI Agents (e.g. Codex and Github Copilot) when working with code in this repository.
+This file provides guidance to AI coding agents when working with code in this repository.
 
 ## Overview
 
@@ -36,24 +36,73 @@ helm registry login ghcr.io -u <username> -p <token>
 
 All lint/test scripts pass `--set secrets.openclawGatewayToken=lint-token` automatically to satisfy the required secret validation.
 
+## Version Bump
+
+Follow these steps to release a new chart version:
+
+1. **Update chart version** — Bump `version` and `appVersion` in `Chart.yaml` (e.g., `0.1.11` → `0.1.12`).
+2. **Update changelog** — Run `git log v<previous>..HEAD --oneline` to list all commits since the last version tag. For any merge commits (e.g., `Merge pull request #N`), also inspect the individual commits they brought in (`git log v<previous>..HEAD --oneline` will include them). Ensure every non-version-bump commit — including those introduced via merged PRs — is reflected in `CHANGELOG.md`. Add a summary following the existing format (date, bullet points describing changes).
+3. **Commit** — Stage `Chart.yaml` and `CHANGELOG.md`, commit with message `chore: bump chart version to <new-version>`.
+4. **Tag** — Create an annotated tag: `git tag v<new-version>`.
+5. **Push** — Ask the user whether to push the main branch and new tag (`git push origin main && git push origin v<new-version>`).
+
+## Bump Dependencies
+
+These dependencies are not covered by Dependabot and must be bumped manually.
+
+### 1. LiteLLM image (`values.yaml`)
+
+```bash
+# Check latest stable tags from GHCR
+TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:berriai/litellm:pull" | jq -r .token)
+curl -s -H "Authorization: Bearer $TOKEN" "https://ghcr.io/v2/berriai/litellm/tags/list" \
+  | jq -r '.tags[]' | grep '^main-v.*-stable' | sort -V | tail -5
+```
+
+Update `litellm.image.tag` in `values.yaml`.
+
+### 2. openclaw npm package (`Dockerfile`)
+
+```bash
+npm view openclaw version
+```
+
+Update `ARG OPENCLAW_VERSION=` in `Dockerfile`.
+
+### 3. clawhub npm package (`Dockerfile`)
+
+```bash
+npm view clawhub version
+```
+
+Update `ARG CLAWHUB_VERSION=` in `Dockerfile`.
+
+### After updating
+
+Run lint and template tests to verify correctness:
+
+```bash
+./scripts/helm-lint.sh
+./scripts/helm-test.sh
+```
+
 ## Architecture
 
 ### Two-Component Design
 
 The chart deploys two workloads:
 
-1. **OpenClaw StatefulSet** (`templates/statefulset.yaml`) — The gateway itself. Single-instance only (`replicaCount: 1`). Uses persistent storage for state at `/home/vibe/.openclaw`.
+1. **OpenClaw StatefulSet** (`templates/statefulset.yaml`) — The gateway itself. Single-instance only (`replicaCount: 1`). Uses persistent storage for the entire `/home/vibe` directory (plugins, configs, tools).
 2. **LiteLLM Deployment** (`templates/litellm-deployment.yaml`) — Optional proxy (enabled by default) that decouples OpenClaw from specific AI providers. Supports GitHub Copilot, Anthropic, and OpenAI providers. Runs as a separate Deployment with its own service, config, and secrets.
 
 OpenClaw connects to LiteLLM via its internal service URL, configured automatically in the generated `openclaw.json`.
 
 ### Init Container Data Seeding
 
-The `init-openclaw-data` container in the StatefulSet:
+The `init-home-data` container in the StatefulSet:
 
-1. Copies initial data from image's `/home/vibe/.openclaw` to PVC (only if PVC is empty)
-2. Seeds `openclaw.json` config from ConfigMap if not present in PVC
-3. Copies Codex (`codex-config.toml`) and Claude (`claude-settings.json`) configurations from ConfigMap
+1. Seeds `/home/vibe` from image to PVC on first run (if PVC is empty)
+2. Seeds `openclaw.json`, `codex-config.toml`, and `claude-settings.json` from ConfigMap
 
 ### ConfigMap Generation (`templates/configmap.yaml`)
 
