@@ -81,6 +81,20 @@ ingress:
   # -- TLS configuration
   tls: []
 
+## @section ttyd Settings
+
+# -- ttyd configuration (web-based terminal access via browser)
+ttyd:
+  # -- Enable ttyd web terminal
+  enabled: true
+  # -- Port ttyd listens on inside the container
+  port: 7681
+  ingress:
+    # -- Enable ttyd ingress route (requires ingress.enabled)
+    enabled: false
+    # -- URL path prefix for the ttyd web terminal
+    pathPrefix: /ttyd/
+
 ## @section Resource Settings
 
 # -- Resource requests and limits

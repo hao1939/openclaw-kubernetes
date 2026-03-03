@@ -6,6 +6,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 ARG OPENCLAW_VERSION=2026.3.1
 ARG CLAWHUB_VERSION=0.7.0
+ARG TTYD_VERSION=1.7.7
 ARG TZ=UTC
 ENV TZ="$TZ"
 
@@ -70,6 +71,12 @@ RUN KUBECTL_VERSION=$(curl -fsSL https://dl.k8s.io/release/stable.txt) && \
 # Install Azure CLI (official install command)
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
+# Install ttyd (web-based terminal)
+RUN ARCH=$(dpkg --print-architecture) && \
+    case "$ARCH" in amd64) TTYD_ARCH=x86_64 ;; arm64) TTYD_ARCH=aarch64 ;; *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;; esac && \
+    curl --retry 3 -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${TTYD_ARCH}" -o /usr/local/bin/ttyd && \
+    chmod +x /usr/local/bin/ttyd
+
 # Create vibe user
 RUN groupadd --gid 1024 vibe && \
   useradd -s /bin/zsh --uid 1024 --gid 1024 -m vibe && \
@@ -128,6 +135,9 @@ EXPOSE 8080
 
 # noVNC web interface port
 EXPOSE 6080
+
+# ttyd web terminal port
+EXPOSE 7681
 
 # Copy entrypoint script
 COPY --chown=vibe:vibe configs/entrypoint.sh /usr/local/bin/entrypoint.sh

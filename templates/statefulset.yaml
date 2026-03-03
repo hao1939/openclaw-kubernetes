@@ -74,6 +74,11 @@ spec:
             - name: novnc
               containerPort: 6080
               protocol: TCP
+            {{- if .Values.ttyd.enabled }}
+            - name: ttyd
+              containerPort: {{ .Values.ttyd.port }}
+              protocol: TCP
+            {{- end }}
           env:
             - name: NODE_ENV
               value: "production"
@@ -237,6 +242,12 @@ spec:
                   key: OPENCLAW_GATEWAY_TOKEN
             {{- end }}
             # Config file path
+            - name: TTYD_ENABLED
+              value: {{ .Values.ttyd.enabled | quote }}
+            - name: TTYD_PORT
+              value: {{ .Values.ttyd.port | quote }}
+            - name: TTYD_BASE_PATH
+              value: {{ .Values.ttyd.ingress.pathPrefix | quote }}
             - name: OPENCLAW_CONFIG_PATH
               value: "/home/vibe/.openclaw/openclaw.json"
             {{- with .Values.extraEnv }}

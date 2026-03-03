@@ -5,6 +5,9 @@ DISPLAY_NUM=${DISPLAY_NUM:-99}
 SCREEN_RES=${SCREEN_RESOLUTION:-1920x1080x24}
 VNC_PORT=${VNC_PORT:-5900}
 NOVNC_PORT=${NOVNC_PORT:-6080}
+TTYD_PORT=${TTYD_PORT:-7681}
+TTYD_ENABLED=${TTYD_ENABLED:-true}
+TTYD_BASE_PATH=${TTYD_BASE_PATH:-/ttyd/}
 
 cat > /tmp/supervisord.conf << EOF
 [unix_http_server]
@@ -75,5 +78,18 @@ stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 EOF
+
+if [ "$TTYD_ENABLED" = "true" ]; then
+  cat >> /tmp/supervisord.conf << TTYD
+
+[program:ttyd]
+command=ttyd --port ${TTYD_PORT} --base-path ${TTYD_BASE_PATH} --writable zsh
+priority=25
+autorestart=true
+startretries=5
+stdout_logfile=/dev/null
+stderr_logfile=/dev/null
+TTYD
+fi
 
 exec supervisord -n -c /tmp/supervisord.conf

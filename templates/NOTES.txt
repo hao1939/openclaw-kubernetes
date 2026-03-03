@@ -33,3 +33,22 @@ To get the application URL, run these commands:
 
 Gateway Token:
   kubectl get secret --namespace {{ .Release.Namespace }} {{ include "openclaw.secretName" . }} -o jsonpath="{.data.OPENCLAW_GATEWAY_TOKEN}" | base64 --decode
+{{- if .Values.ttyd.enabled }}
+
+ttyd Web Terminal:
+{{- if and .Values.ingress.enabled .Values.ttyd.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ $.Values.ttyd.ingress.pathPrefix }}
+{{- end }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "openclaw.fullname" . }} {{ .Values.ttyd.port }}:{{ .Values.ttyd.port }}
+  Then visit http://localhost:{{ .Values.ttyd.port }}{{ .Values.ttyd.ingress.pathPrefix }}
+{{- end }}
+{{- end }}
+{{- if .Values.novnc.ingress.enabled }}
+
+noVNC Remote Desktop:
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ $.Values.novnc.ingress.pathPrefix }}/vnc.html
+{{- end }}
+{{- end }}

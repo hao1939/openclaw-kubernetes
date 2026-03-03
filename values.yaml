@@ -129,6 +129,18 @@ novnc:
     # -- URL path prefix for the noVNC web UI (e.g. /vnc/vnc.html)
     pathPrefix: /vnc
 
+# -- ttyd configuration (web-based terminal access via browser)
+ttyd:
+  # -- Enable ttyd web terminal
+  enabled: true
+  # -- Port ttyd listens on inside the container
+  port: 7681
+  ingress:
+    # -- Enable ttyd ingress route (requires ingress.enabled)
+    enabled: false
+    # -- URL path prefix for the ttyd web terminal
+    pathPrefix: /ttyd/
+
 # -- Resource requests and limits
 resources:
   # -- Resource limits

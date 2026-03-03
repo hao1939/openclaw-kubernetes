@@ -24,5 +24,11 @@ spec:
       targetPort: 6080
       protocol: TCP
       name: novnc
+    {{- if .Values.ttyd.enabled }}
+    - port: {{ .Values.ttyd.port }}
+      targetPort: {{ .Values.ttyd.port }}
+      protocol: TCP
+      name: ttyd
+    {{- end }}
   selector:
     {{- include "openclaw.selectorLabels" . | nindent 4 }}

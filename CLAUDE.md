@@ -77,6 +77,14 @@ npm view clawhub version
 
 Update `ARG CLAWHUB_VERSION=` in `Dockerfile`.
 
+### 4. ttyd binary (`Dockerfile`)
+
+```bash
+curl -fsSL https://api.github.com/repos/tsl0922/ttyd/releases/latest | jq -r .tag_name
+```
+
+Update `ARG TTYD_VERSION=` in `Dockerfile`.
+
 ### After updating
 
 Run lint and template tests to verify correctness:
@@ -131,6 +139,15 @@ Two modes:
 
 Both secrets and LiteLLM secrets use `lookup` + `helm.sh/resource-policy: keep` to preserve existing values on upgrades.
 
+### ttyd (Web Terminal)
+
+Optional browser-based terminal access via [ttyd](https://github.com/tsl0922/ttyd). Controlled by `ttyd.*` values:
+
+- **`ttyd.enabled`** (default: `true`) — Adds the container port and starts ttyd as a supervisord process. Reachable only within the cluster via the Service.
+- **`ttyd.port`** (default: `7681`) — Port ttyd listens on inside the container.
+- **`ttyd.ingress.enabled`** (default: `false`) — Creates a dedicated Ingress resource for external access. Gated on both `ttyd.enabled` and `ttyd.ingress.enabled`.
+- **`ttyd.ingress.pathPrefix`** (default: `/ttyd/`) — URL path for the ingress rule. Kept in sync with ttyd's `--base-path` via the `TTYD_BASE_PATH` env var, so no ingress rewrite is needed (unlike noVNC which requires a separate rewrite rule).
+
 ### Values Presets
 
 - `values.yaml` — Full defaults with security hardening, resource limits, persistence enabled
@@ -155,9 +172,9 @@ Key named templates:
 
 - Base: `node:24-slim` with development tools (git, vim, zsh, ripgrep, gh, chromium)
 - User: `vibe` (UID/GID 1024), non-root with sudo
-- Installs: `openclaw` (npm), `@openai/codex` (npm), Claude Code, `uv` (Python)
+- Installs: `openclaw` (npm), `@openai/codex` (npm), Claude Code, `uv` (Python), `ttyd` (web terminal)
 - Copies `configs/codex-config.toml` and `configs/claude-settings.json` into the image
-- Entrypoint: `openclaw gateway --allow-unconfigured`
+- Entrypoint: supervisord managing Xvfb, Fluxbox, x11vnc, noVNC, Chrome, ttyd (optional), and OpenClaw gateway
 
 ### CI/CD
 
