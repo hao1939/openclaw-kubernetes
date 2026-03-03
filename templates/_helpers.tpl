@@ -48,6 +48,7 @@ Selector labels
 {{- define "openclaw.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "openclaw.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: gateway
 {{- end }}
 
 {{/*

@@ -24,3 +24,7 @@ jobs:
         run: ./scripts/helm-lint.sh
       - name: Helm template
         run: ./scripts/helm-test.sh
+      - name: Install yq
+        uses: mikefarah/yq@v4
+      - name: Selector isolation
+        run: ./scripts/helm-test-selectors.sh
