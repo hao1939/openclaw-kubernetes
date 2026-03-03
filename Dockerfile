@@ -96,6 +96,9 @@ ENV SHELL=/bin/zsh
 # Allow Codex CLI running without sandboxing
 ENV CODEX_UNSAFE_ALLOW_NO_SANDBOX=1
 
+# ClawHub workdir for skill management
+ENV CLAWHUB_WORKDIR=/home/vibe/.openclaw/
+
 # Install npm global tools
 RUN npm install -g @openai/codex openclaw@${OPENCLAW_VERSION} clawhub@${CLAWHUB_VERSION} && \
   npm cache clean --force
