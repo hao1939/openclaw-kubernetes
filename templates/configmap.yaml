@@ -110,6 +110,10 @@ data:
     {{- $network := dig "network" (dict) $telegram }}
     {{- $_ := set $network "autoSelectFamily" false }}
     {{- $_ := set $telegram "network" $network }}
+    {{- /* Enable partial streaming for real-time response preview in Telegram.
+       OpenClaw ≥ new-version defaults to "partial", but we set it explicitly
+       so the chart behaves consistently regardless of upstream default changes. */}}
+    {{- $_ := set $telegram "streaming" "partial" }}
     {{- /* Support tokenFile for Telegram (reads bot token from file instead of env var) */}}
     {{- if .Values.secrets.telegramTokenFile }}
     {{- $_ := set $telegram "tokenFile" .Values.secrets.telegramTokenFile }}
