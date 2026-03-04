@@ -487,6 +487,16 @@ helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
   --set secrets.telegramBotToken=<your-telegram-bot-token>
 ```
 
+To restrict which Telegram users can DM the bot, set `openclaw.dmAccess`. Get your numeric user ID from [@userinfobot](https://t.me/userinfobot):
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set secrets.telegramBotToken=<your-telegram-bot-token> \
+  --set openclaw.dmAccess.policy=allowlist \
+  --set-json 'openclaw.dmAccess.allowFrom.telegram=["tg:123456789","@username"]'
+```
+
 For production deployments, consider using `telegramTokenFile` instead of `telegramBotToken` to avoid exposing the token in pod specs. Mount a Kubernetes Secret as a file and point `telegramTokenFile` to it:
 
 ```bash
@@ -522,6 +532,17 @@ helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
   --set secrets.openclawGatewayToken=$gatewayToken \
   --set secrets.slackBotToken=xoxb-... \
   --set secrets.slackAppToken=xapp-...
+```
+
+To restrict which Slack users can DM the bot, set `openclaw.dmAccess`. Find user IDs in Slack via **Profile → Copy member ID** (format: `U053FP6RAMA`):
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set secrets.slackBotToken=xoxb-... \
+  --set secrets.slackAppToken=xapp-... \
+  --set openclaw.dmAccess.policy=allowlist \
+  --set-json 'openclaw.dmAccess.allowFrom.slack=["U053FP6RAMA"]'
 ```
 
 📖 [Slack Setup Guide](https://docs.openclaw.ai/channels/slack)
@@ -707,9 +728,25 @@ kubectl -n openclaw exec -it openclaw-0 -- node openclaw.mjs onboard
 </details>
 
 <details>
-<summary>How to authorize Telegram users?</summary>
+<summary>How to authorize Telegram or Slack users?</summary>
 
-Add your user ID in **Channel -> Telegram -> Allow From**. Get your ID by messaging [@userinfobot](https://t.me/userinfobot).
+Set `openclaw.dmAccess.policy=allowlist` and provide user IDs via `--set-json`:
+
+```bash
+# Telegram: get your ID from @userinfobot
+helm upgrade openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set openclaw.dmAccess.policy=allowlist \
+  --set-json 'openclaw.dmAccess.allowFrom.telegram=["tg:123456789"]'
+
+# Slack: copy member ID from user profile (format: U053FP6RAMA)
+helm upgrade openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set openclaw.dmAccess.policy=allowlist \
+  --set-json 'openclaw.dmAccess.allowFrom.slack=["U053FP6RAMA"]'
+```
+
+Users in `allowFrom` bypass the pairing flow. Use `policy=pairing` (default) to keep pairing for everyone else while pre-approving specific users.
 
 </details>
 
