@@ -1,0 +1,26 @@
+# Example: PersistentVolume for external skills stored on Azure Blob NFS.
+# Replace <resource-group>, <storage-account>, and <container-name> with your values.
+# See also: external-skills-pvc.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-openclawskills
+  annotations:
+    pv.kubernetes.io/provisioned-by: blob.csi.azure.com
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azureblob-nfs-premium
+  mountOptions:
+    - nconnect=4
+  csi:
+    driver: blob.csi.azure.com
+    volumeHandle: openclawskills_aks-skills
+    volumeAttributes:
+      resourceGroup: <resource-group>
+      storageAccount: <storage-account>
+      containerName: <container-name>
+      protocol: nfs

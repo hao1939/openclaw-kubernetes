@@ -139,6 +139,20 @@ data:
     {{- end }}
     {{- end }}
     {{- $_ := set $config "channels" $channels }}
+    {{- /* Merge skills.load config (extraDirs, watch, watchDebounceMs) into openclaw.json.
+       Combines manually specified extraDirs with auto-generated paths from skills.volumes. */}}
+    {{- $skillsExtraDirs := .Values.openclaw.skills.load.extraDirs | default list }}
+    {{- range .Values.openclaw.skills.volumes }}
+    {{- $skillsExtraDirs = append $skillsExtraDirs .mountPath }}
+    {{- end }}
+    {{- if or $skillsExtraDirs (not .Values.openclaw.skills.load.watch) (ne (int .Values.openclaw.skills.load.watchDebounceMs) 250) }}
+    {{- $skillsLoad := dict
+      "extraDirs" $skillsExtraDirs
+      "watch" .Values.openclaw.skills.load.watch
+      "watchDebounceMs" (int .Values.openclaw.skills.load.watchDebounceMs)
+    }}
+    {{- $_ := set $config "skills" (dict "load" $skillsLoad) }}
+    {{- end }}
 {{ $config | toPrettyJson | indent 4 }}
   codex-config.toml: |
     # Codex CLI Configuration

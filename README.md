@@ -123,6 +123,62 @@ helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
   --set 'extraVolumeMounts[0].readOnly=true'
 ```
 
+### External Skills (PVC / NFS)
+
+For skills stored outside the main persistent volume — such as shared skill packs on a separate PVC or NFS share — use `openclaw.skills.volumes` to mount them and auto-wire them into the config:
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set secrets.telegramBotToken=$telegramBotToken \
+  --set 'openclaw.skills.volumes[0].name=shared-skills' \
+  --set 'openclaw.skills.volumes[0].mountPath=/skills/shared' \
+  --set 'openclaw.skills.volumes[0].persistentVolumeClaim.claimName=shared-skills-pvc'
+```
+
+Each volume entry mounts a read-only volume and automatically adds its `mountPath` to the `skills.load.extraDirs` list in `openclaw.json`. Any Kubernetes volume type works (PVC, NFS, hostPath, etc.):
+
+```yaml
+openclaw:
+  skills:
+    volumes:
+      - name: shared-skills
+        mountPath: /skills/shared
+        persistentVolumeClaim:
+          claimName: shared-skills-pvc
+      - name: nfs-skills
+        mountPath: /skills/nfs
+        nfs:
+          server: 10.0.0.1
+          path: /exported/skills
+```
+
+For skill directories already on the main PVC, use `extraDirs` instead:
+
+```yaml
+openclaw:
+  skills:
+    load:
+      extraDirs:
+        - /home/vibe/my-project/skills
+```
+
+<details>
+<summary>Skills loading configuration</summary>
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| `openclaw.skills.load.extraDirs` | `[]` | Additional directories to load skills from |
+| `openclaw.skills.load.watch` | `true` | Watch skill files for changes (auto-reload) |
+| `openclaw.skills.load.watchDebounceMs` | `250` | Debounce time in ms for file change detection |
+| `openclaw.skills.volumes` | `[]` | PVC/NFS volumes containing external skills (auto-mounted and auto-wired) |
+
+Each path in `extraDirs` (or auto-wired from `volumes`) must follow the standard skill directory structure: `<dir>/<skill-name>/SKILL.md`. External skills are lowest priority — workspace and managed skills take precedence.
+
+For an Azure Blob NFS example, see [`examples/external-skills-pv.yaml`](examples/external-skills-pv.yaml) and [`examples/external-skills-pvc.yaml`](examples/external-skills-pvc.yaml).
+
+</details>
+
 See [`skills/README.md`](skills/README.md) for skill structure and authoring details.
 
 ## Memory

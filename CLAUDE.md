@@ -116,7 +116,7 @@ The `init-home-data` container in the StatefulSet:
 
 The ConfigMap renders three configs from values:
 
-- **`openclaw.json`** — Merges base config with LiteLLM provider settings. Auto-detects API format based on model name prefix (`anthropic-messages` for claude*, `openai-responses` for gpt*, `openai-completions` otherwise).
+- **`openclaw.json`** — Merges base config with LiteLLM provider settings. Auto-detects API format based on model name prefix (`anthropic-messages` for claude*, `openai-responses` for gpt*, `openai-completions` otherwise). Also renders `skills.load` config when external skill directories or volumes are configured.
 - **`codex-config.toml`** — Codex CLI config pointing at the LiteLLM proxy service.
 - **`claude-settings.json`** — Claude Code settings with LiteLLM as base URL, model selections, and permission rules.
 

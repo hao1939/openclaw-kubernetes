@@ -290,6 +290,27 @@ openclaw:
     # -- Extra paths to index for memory search
     extraPaths: []
 
+  # -- External skills loading configuration.
+  # Load additional skills from directories outside the default paths.
+  skills:
+    load:
+      # -- Additional directories to load skills from.
+      # Each path must follow the structure: <dir>/<skill-name>/SKILL.md
+      # These are lowest priority — workspace and managed skills take precedence.
+      extraDirs: []
+      # -- Watch skill files for changes (auto-reload on next agent turn)
+      watch: true
+      # -- Debounce time in ms for file change detection
+      watchDebounceMs: 250
+    # -- PVC volumes containing external skills.
+    # Each entry mounts a volume and auto-appends its mountPath to extraDirs.
+    # This is a convenience — you can also use extraVolumes/extraVolumeMounts
+    # with manual extraDirs entries.
+    volumes: []
+    # - name: shared-skills
+    #   mountPath: /skills/shared
+    #   persistentVolumeClaim:
+    #     claimName: shared-skills-pvc
 
 # -- Secrets configuration
 secrets:

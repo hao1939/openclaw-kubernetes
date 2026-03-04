@@ -1,0 +1,22 @@
+# Example: PersistentVolumeClaim for external skills.
+# Binds to the PV defined in external-skills-pv.yaml.
+# Usage with the Helm chart:
+#
+#   helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+#     --set secrets.openclawGatewayToken=$gatewayToken \
+#     --set 'openclaw.skills.volumes[0].name=external-skills' \
+#     --set 'openclaw.skills.volumes[0].mountPath=/skills/external' \
+#     --set 'openclaw.skills.volumes[0].persistentVolumeClaim.claimName=pvc-openclawskills'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-openclawskills
+  namespace: openclaw
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: azureblob-nfs-premium
+  volumeName: pv-openclawskills

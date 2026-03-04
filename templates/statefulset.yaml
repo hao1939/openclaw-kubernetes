@@ -300,6 +300,11 @@ spec:
             - name: config
               mountPath: /etc/openclaw
               readOnly: true
+            {{- range .Values.openclaw.skills.volumes }}
+            - name: skills-{{ .name }}
+              mountPath: {{ .mountPath }}
+              readOnly: true
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -325,6 +330,10 @@ spec:
         {{- else }}
         - name: data
           emptyDir: {}
+        {{- end }}
+        {{- range .Values.openclaw.skills.volumes }}
+        - name: skills-{{ .name }}
+          {{- omit . "name" "mountPath" | toYaml | nindent 10 }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
