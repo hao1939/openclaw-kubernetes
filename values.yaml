@@ -141,6 +141,35 @@ ttyd:
     # -- URL path prefix for the ttyd web terminal
     pathPrefix: /ttyd/
 
+# -- Tailscale configuration (mesh VPN for secure access without public ports)
+# When enabled, each StatefulSet pod registers as a unique device on the
+# Tailscale network. Access pods via their Tailscale hostname or IP.
+# Requires a Tailscale auth key from https://login.tailscale.com/admin/settings/keys
+tailscale:
+  # -- Enable Tailscale mesh VPN
+  enabled: false
+  # -- Hostname prefix on the Tailscale network.
+  # Each pod appends its StatefulSet ordinal: <hostname>-0, <hostname>-1, etc.
+  # If empty, uses the pod name directly (e.g. openclaw-0).
+  hostname: ""
+  # -- Extra arguments passed to `tailscale up`.
+  # Example: "--advertise-routes=10.96.0.0/12" for subnet routing.
+  # Note: Subnet routing requires kernel networking (userspace: false)
+  # and NET_ADMIN capability (add to securityContext.capabilities.add).
+  extraArgs: ""
+  # -- Accept DNS configuration from the Tailscale network
+  acceptDns: false
+  # -- Use userspace networking (no NET_ADMIN capability needed).
+  # Set to false for kernel networking (needed for subnet routing / exit nodes).
+  # Kernel networking requires adding NET_ADMIN to securityContext.capabilities.add.
+  userspace: true
+  # -- Tailscale Serve configuration (HTTPS proxy via Tailscale certificates)
+  serve:
+    # -- Enable `tailscale serve` to proxy the gateway with Tailscale HTTPS
+    enabled: false
+    # -- Port to proxy (defaults to gateway port)
+    port: ""
+
 # -- Resource requests and limits
 resources:
   # -- Resource limits
@@ -335,6 +364,9 @@ secrets:
   braveApiKey: ""
   # Perplexity - AI-synthesized answers with citations
   perplexityApiKey: ""
+  # -- Tailscale auth key (from https://login.tailscale.com/admin/settings/keys)
+  # Recommended: Reusable + Ephemeral. Required when tailscale.enabled is true.
+  tailscaleAuthKey: ""
   # -- Gateway authentication token
   openclawGatewayToken: ""
   # -- Telegram bot token file path (alternative to telegramBotToken).

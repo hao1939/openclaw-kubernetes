@@ -7,6 +7,7 @@ LABEL org.opencontainers.image.licenses="MIT"
 ARG OPENCLAW_VERSION=2026.3.2
 ARG CLAWHUB_VERSION=0.7.0
 ARG TTYD_VERSION=1.7.7
+ARG TAILSCALE_VERSION=1.94.2
 ARG TZ=UTC
 ENV TZ="$TZ"
 
@@ -76,6 +77,14 @@ RUN ARCH=$(dpkg --print-architecture) && \
     case "$ARCH" in amd64) TTYD_ARCH=x86_64 ;; arm64) TTYD_ARCH=aarch64 ;; *) echo "Unsupported arch: $ARCH" >&2; exit 1 ;; esac && \
     curl --retry 3 -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${TTYD_ARCH}" -o /usr/local/bin/ttyd && \
     chmod +x /usr/local/bin/ttyd
+
+# Install Tailscale (mesh VPN — only activated when TAILSCALE_ENABLED=true)
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -fsSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_${ARCH}.tgz" | \
+    tar xz -C /tmp && \
+    install -m 755 /tmp/tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscale /usr/local/bin/ && \
+    install -m 755 /tmp/tailscale_${TAILSCALE_VERSION}_${ARCH}/tailscaled /usr/local/bin/ && \
+    rm -rf /tmp/tailscale_*
 
 # Create vibe user
 RUN groupadd --gid 1024 vibe && \

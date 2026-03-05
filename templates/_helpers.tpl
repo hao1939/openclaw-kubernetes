@@ -99,6 +99,9 @@ Validate that required secrets are provided when not using existing secret
 {{- if not .Values.secrets.openclawGatewayToken }}
 {{- fail "secrets.openclawGatewayToken is required when not using an existing secret" }}
 {{- end }}
+{{- if and .Values.tailscale.enabled (not .Values.secrets.tailscaleAuthKey) }}
+{{- fail "secrets.tailscaleAuthKey is required when tailscale.enabled is true and not using an existing secret" }}
+{{- end }}
 {{- end }}
 {{- end }}
 

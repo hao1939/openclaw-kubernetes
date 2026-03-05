@@ -250,6 +250,27 @@ spec:
               value: {{ .Values.ttyd.ingress.pathPrefix | quote }}
             - name: OPENCLAW_CONFIG_PATH
               value: "/home/vibe/.openclaw/openclaw.json"
+            {{- if .Values.tailscale.enabled }}
+            - name: TAILSCALE_ENABLED
+              value: "true"
+            - name: TAILSCALE_HOSTNAME
+              value: {{ .Values.tailscale.hostname | quote }}
+            - name: TAILSCALE_USERSPACE
+              value: {{ .Values.tailscale.userspace | quote }}
+            - name: TAILSCALE_ACCEPT_DNS
+              value: {{ .Values.tailscale.acceptDns | quote }}
+            - name: TAILSCALE_EXTRA_ARGS
+              value: {{ .Values.tailscale.extraArgs | quote }}
+            - name: TAILSCALE_SERVE_ENABLED
+              value: {{ .Values.tailscale.serve.enabled | quote }}
+            - name: TAILSCALE_SERVE_PORT
+              value: {{ .Values.tailscale.serve.port | default .Values.openclaw.config.gateway.port | quote }}
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret | default (include "openclaw.secretName" .) }}
+                  key: TAILSCALE_AUTH_KEY
+            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -300,6 +321,10 @@ spec:
             - name: config
               mountPath: /etc/openclaw
               readOnly: true
+            {{- if .Values.tailscale.enabled }}
+            - name: tailscale-state
+              mountPath: /var/lib/tailscale
+            {{- end }}
             {{- range .Values.openclaw.skills.volumes }}
             - name: skills-{{ .name }}
               mountPath: {{ .mountPath }}
@@ -314,6 +339,10 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+        {{- if .Values.tailscale.enabled }}
+        - name: tailscale-state
+          emptyDir: {}
+        {{- end }}
         - name: config
           configMap:
             name: {{ include "openclaw.configMapName" . }}

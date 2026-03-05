@@ -85,6 +85,15 @@ curl -fsSL https://api.github.com/repos/tsl0922/ttyd/releases/latest | jq -r .ta
 
 Update `ARG TTYD_VERSION=` in `Dockerfile`.
 
+### 5. Tailscale binaries (`Dockerfile`)
+
+```bash
+# Note: tag includes "v" prefix (e.g. "v1.80.3") — strip it for the ARG value
+curl -fsSL https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r '.tag_name | ltrimstr("v")'
+```
+
+Update `ARG TAILSCALE_VERSION=` in `Dockerfile`.
+
 ### After updating
 
 Run lint and template tests to verify correctness:
@@ -148,6 +157,20 @@ Optional browser-based terminal access via [ttyd](https://github.com/tsl0922/tty
 - **`ttyd.ingress.enabled`** (default: `false`) — Creates a dedicated Ingress resource for external access. Gated on both `ttyd.enabled` and `ttyd.ingress.enabled`.
 - **`ttyd.ingress.pathPrefix`** (default: `/ttyd/`) — URL path for the ingress rule. Kept in sync with ttyd's `--base-path` via the `TTYD_BASE_PATH` env var, so no ingress rewrite is needed (unlike noVNC which requires a separate rewrite rule).
 
+### Tailscale (Mesh VPN)
+
+Optional secure access via Tailscale mesh network. Controlled by `tailscale.*` values:
+
+- **`tailscale.enabled`** (default: `false`) — Adds tailscaled + tailscale up as supervisord processes.
+- **`tailscale.hostname`** — Prefix for Tailscale device name. Each pod appends its ordinal.
+- **`tailscale.userspace`** (default: `true`) — Userspace networking (no NET_ADMIN needed).
+- **`tailscale.serve.enabled`** — Enables HTTPS proxy via Tailscale certificates.
+- **`tailscale.extraArgs`** — Extra `tailscale up` arguments (e.g. subnet routing).
+
+Per-Pod Node model: each StatefulSet pod registers as a unique Tailscale device, so multi-replica works without routing conflicts.
+
+State uses emptyDir — pods re-authenticate on restart using a reusable auth key.
+
 ### Network Policies
 
 Optional egress-only NetworkPolicies that block access to the cloud instance metadata service (IMDS at 169.254.169.254). Controlled by `networkPolicy.enabled` (default: `false`). When enabled, creates one policy per component (OpenClaw and LiteLLM), each allowing all egress except IMDS. Ingress is not restricted.
@@ -174,11 +197,11 @@ Key named templates:
 
 `Dockerfile` builds the OpenClaw container image (`ghcr.io/feiskyer/openclaw-gateway`):
 
-- Base: `node:24-slim` with development tools (git, vim, zsh, ripgrep, gh, chromium)
+- Base: `node:25-slim` with development tools (git, vim, zsh, ripgrep, gh, chromium)
 - User: `vibe` (UID/GID 1024), non-root with sudo
-- Installs: `openclaw` (npm), `@openai/codex` (npm), Claude Code, `uv` (Python), `ttyd` (web terminal)
+- Installs: `openclaw` (npm), `@openai/codex` (npm), Claude Code, `uv` (Python), `ttyd` (web terminal), `tailscale` (mesh VPN)
 - Copies `configs/codex-config.toml` and `configs/claude-settings.json` into the image
-- Entrypoint: supervisord managing Xvfb, Fluxbox, x11vnc, noVNC, Chrome, ttyd (optional), and OpenClaw gateway
+- Entrypoint: supervisord managing Xvfb, Fluxbox, x11vnc, noVNC, Chrome, ttyd (optional), tailscale (optional), and OpenClaw gateway
 
 ### CI/CD
 

@@ -90,6 +90,47 @@ Environment variables:
 
 </details>
 
+## Tailscale
+
+[Tailscale](https://tailscale.com/) integration for secure access to the gateway without exposing public ports. When enabled, each StatefulSet pod registers as a unique device on your Tailscale network.
+
+```bash
+helm install openclaw oci://ghcr.io/feiskyer/openclaw-kubernetes/openclaw \
+  --set secrets.openclawGatewayToken=$gatewayToken \
+  --set secrets.telegramBotToken=$telegramBotToken \
+  --set tailscale.enabled=true \
+  --set secrets.tailscaleAuthKey=tskey-auth-xxxxx \
+  --set tailscale.hostname=openclaw
+```
+
+After deployment, access the gateway via its Tailscale hostname (e.g. `openclaw-0`) or Tailscale IP.
+
+<details>
+<summary>Configuration</summary>
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| `tailscale.enabled` | `false` | Enable Tailscale mesh VPN |
+| `tailscale.hostname` | `""` | Hostname prefix on the Tailscale network. Each pod appends its ordinal: `<hostname>-0`, `<hostname>-1`, etc. If empty, uses the pod name. |
+| `tailscale.userspace` | `true` | Use userspace networking (no NET_ADMIN capability needed) |
+| `tailscale.acceptDns` | `false` | Accept DNS configuration from the Tailscale network |
+| `tailscale.extraArgs` | `""` | Extra arguments passed to `tailscale up` (e.g. `--advertise-routes=10.96.0.0/12`) |
+| `tailscale.serve.enabled` | `false` | Enable `tailscale serve` to proxy the gateway with Tailscale HTTPS certificates |
+| `tailscale.serve.port` | `""` | Port to proxy (defaults to gateway port) |
+| `secrets.tailscaleAuthKey` | `""` | Tailscale auth key (**required** when `tailscale.enabled` is `true`) |
+
+</details>
+
+<details>
+<summary>How it works</summary>
+
+- **Per-Pod Node model**: Each StatefulSet pod registers as a unique Tailscale device, so multi-replica works without routing conflicts.
+- **Userspace networking** (default): No `NET_ADMIN` capability needed. Set `tailscale.userspace: false` for kernel networking (required for subnet routing or exit nodes — also add `NET_ADMIN` to `securityContext.capabilities.add`).
+- **Ephemeral state**: Tailscale state uses `emptyDir` — pods re-authenticate on restart using a reusable auth key. Use a **Reusable + Ephemeral** key from [Tailscale admin](https://login.tailscale.com/admin/settings/keys).
+- **HTTPS via Tailscale Serve**: Enable `tailscale.serve.enabled` to get automatic HTTPS certificates from Tailscale for the gateway.
+
+</details>
+
 ## Skills
 
 The container image ships with built-in **skills** — structured instruction sets that teach the OpenClaw agent how to operate external coding tools as managed sub-agents. Skills are installed at `~/.openclaw/skills/` inside the container.
@@ -327,6 +368,7 @@ To override the built-in config entirely, set `litellm.configOverride` with your
 | `persistence.size` | `10Gi` | Storage size for OpenClaw data |
 | `ingress.enabled` | `false` | Enable Ingress for external access |
 | `service.type` | `ClusterIP` | Service type (`ClusterIP`, `NodePort`, `LoadBalancer`) |
+| `tailscale.enabled` | `false` | Enable Tailscale mesh VPN for secure access |
 
 See dedicated sections below for [Secrets](#secrets), [Messaging Platforms](#messaging-platforms), [Web Search](#web-search), and [LiteLLM Proxy](#litellm-proxy).
 
@@ -494,6 +536,7 @@ Two modes:
 - `MSTEAMS_TENANT_ID` (optional)
 - `BRAVE_API_KEY` (optional)
 - `PERPLEXITY_API_KEY` (optional)
+- `TAILSCALE_AUTH_KEY` (optional, required when `tailscale.enabled` is `true`)
 
 </details>
 

@@ -8,6 +8,14 @@ NOVNC_PORT=${NOVNC_PORT:-6080}
 TTYD_PORT=${TTYD_PORT:-7681}
 TTYD_ENABLED=${TTYD_ENABLED:-true}
 TTYD_BASE_PATH=${TTYD_BASE_PATH:-/ttyd/}
+TAILSCALE_ENABLED=${TAILSCALE_ENABLED:-false}
+TAILSCALE_HOSTNAME=${TAILSCALE_HOSTNAME:-}
+TAILSCALE_STATE_DIR=${TAILSCALE_STATE_DIR:-/var/lib/tailscale}
+TAILSCALE_USERSPACE=${TAILSCALE_USERSPACE:-true}
+TAILSCALE_EXTRA_ARGS=${TAILSCALE_EXTRA_ARGS:-}
+TAILSCALE_SERVE_ENABLED=${TAILSCALE_SERVE_ENABLED:-false}
+TAILSCALE_SERVE_PORT=${TAILSCALE_SERVE_PORT:-18789}
+TAILSCALE_ACCEPT_DNS=${TAILSCALE_ACCEPT_DNS:-false}
 
 cat > /tmp/supervisord.conf << EOF
 [unix_http_server]
@@ -90,6 +98,113 @@ startretries=5
 stdout_logfile=/dev/null
 stderr_logfile=/dev/null
 TTYD
+fi
+
+if [ "$TAILSCALE_ENABLED" = "true" ]; then
+  # Derive per-pod hostname: <prefix>-<ordinal> or fall back to pod name
+  if [ -n "$TAILSCALE_HOSTNAME" ]; then
+    POD_ORDINAL=${HOSTNAME##*-}
+    if echo "$POD_ORDINAL" | grep -qE '^[0-9]+$'; then
+      TS_HOST="${TAILSCALE_HOSTNAME}-${POD_ORDINAL}"
+    else
+      # Not a StatefulSet pod name — use full hostname as suffix
+      TS_HOST="${TAILSCALE_HOSTNAME}-${HOSTNAME}"
+    fi
+  else
+    TS_HOST="$HOSTNAME"
+  fi
+
+  # Build tailscaled flags
+  TS_DAEMON_FLAGS="--state=${TAILSCALE_STATE_DIR}/tailscaled.state"
+  if [ "$TAILSCALE_USERSPACE" = "true" ]; then
+    TS_DAEMON_FLAGS="${TS_DAEMON_FLAGS} --tun=userspace-networking"
+  fi
+
+  # Build tailscale up flags
+  TS_UP_FLAGS="--hostname=${TS_HOST}"
+  if [ "$TAILSCALE_ACCEPT_DNS" = "true" ]; then
+    TS_UP_FLAGS="${TS_UP_FLAGS} --accept-dns"
+  else
+    TS_UP_FLAGS="${TS_UP_FLAGS} --accept-dns=false"
+  fi
+  if [ -n "$TAILSCALE_EXTRA_ARGS" ]; then
+    # Strip newlines/CRs to prevent supervisord config injection
+    TAILSCALE_EXTRA_ARGS=$(printf '%s' "$TAILSCALE_EXTRA_ARGS" | tr -d '\n\r')
+    TS_UP_FLAGS="${TS_UP_FLAGS} ${TAILSCALE_EXTRA_ARGS}"
+  fi
+
+  # Create wrapper script for tailscale up (waits for tailscaled readiness)
+  cat > /tmp/tailscale-up.sh << 'TSUP'
+#!/bin/bash
+set -e
+echo "tailscale-up: waiting for tailscaled to be ready..."
+for i in $(seq 1 30); do
+  if sudo tailscale status >/dev/null 2>&1; then
+    break
+  fi
+  echo "tailscale-up: tailscaled not ready yet (attempt $i/30), retrying in 2s..."
+  sleep 2
+done
+echo "tailscale-up: running tailscale up..."
+exec sudo tailscale up "$@"
+TSUP
+  chmod +x /tmp/tailscale-up.sh
+
+  cat >> /tmp/supervisord.conf << TAILSCALE
+
+[program:tailscaled]
+command=sudo tailscaled ${TS_DAEMON_FLAGS}
+priority=3
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:tailscale-up]
+command=/tmp/tailscale-up.sh --authkey=%(ENV_TS_AUTHKEY)s ${TS_UP_FLAGS}
+priority=4
+startsecs=0
+startretries=3
+autorestart=false
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+TAILSCALE
+
+  if [ "$TAILSCALE_SERVE_ENABLED" = "true" ]; then
+    # Create wrapper script for tailscale serve (waits for tailscale up)
+    cat > /tmp/tailscale-serve.sh << 'TSSERVESCRIPT'
+#!/bin/bash
+set -e
+echo "tailscale-serve: waiting for tailscale to be connected..."
+for i in $(seq 1 30); do
+  if sudo tailscale status 2>/dev/null | grep -q "^100\."; then
+    break
+  fi
+  echo "tailscale-serve: not connected yet (attempt $i/30), retrying in 3s..."
+  sleep 3
+done
+echo "tailscale-serve: running tailscale serve..."
+exec sudo tailscale serve "$@"
+TSSERVESCRIPT
+    chmod +x /tmp/tailscale-serve.sh
+
+    cat >> /tmp/supervisord.conf << TSSERVE
+
+[program:tailscale-serve]
+command=/tmp/tailscale-serve.sh --bg http://localhost:${TAILSCALE_SERVE_PORT}
+priority=5
+startsecs=0
+startretries=5
+autorestart=false
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+TSSERVE
+  fi
 fi
 
 exec supervisord -n -c /tmp/supervisord.conf
