@@ -118,6 +118,11 @@ if [ "$TAILSCALE_ENABLED" = "true" ]; then
   TS_DAEMON_FLAGS="--state=${TAILSCALE_STATE_DIR}/tailscaled.state"
   if [ "$TAILSCALE_USERSPACE" = "true" ]; then
     TS_DAEMON_FLAGS="${TS_DAEMON_FLAGS} --tun=userspace-networking"
+  else
+    # Kernel networking requires /dev/net/tun
+    sudo mkdir -p /dev/net
+    sudo mknod /dev/net/tun c 10 200 2>/dev/null || true
+    sudo chmod 600 /dev/net/tun
   fi
 
   # Build tailscale up flags
@@ -133,23 +138,6 @@ if [ "$TAILSCALE_ENABLED" = "true" ]; then
     TS_UP_FLAGS="${TS_UP_FLAGS} ${TAILSCALE_EXTRA_ARGS}"
   fi
 
-  # Create wrapper script for tailscale up (waits for tailscaled readiness)
-  cat > /tmp/tailscale-up.sh << 'TSUP'
-#!/bin/bash
-set -e
-echo "tailscale-up: waiting for tailscaled to be ready..."
-for i in $(seq 1 30); do
-  if sudo tailscale status >/dev/null 2>&1; then
-    break
-  fi
-  echo "tailscale-up: tailscaled not ready yet (attempt $i/30), retrying in 2s..."
-  sleep 2
-done
-echo "tailscale-up: running tailscale up..."
-exec sudo tailscale up "$@"
-TSUP
-  chmod +x /tmp/tailscale-up.sh
-
   cat >> /tmp/supervisord.conf << TAILSCALE
 
 [program:tailscaled]
@@ -162,11 +150,10 @@ stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
 
 [program:tailscale-up]
-command=/tmp/tailscale-up.sh --authkey=%(ENV_TS_AUTHKEY)s ${TS_UP_FLAGS}
+command=bash -c 'sleep 5 && echo "tailscale-up: running tailscale up..." && sudo tailscale up --authkey=%(ENV_TS_AUTHKEY)s ${TS_UP_FLAGS} && echo "tailscale-up: connected successfully"'
 priority=4
 startsecs=0
-startretries=3
-autorestart=false
+autorestart=unexpected
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -174,31 +161,13 @@ stderr_logfile_maxbytes=0
 TAILSCALE
 
   if [ "$TAILSCALE_SERVE_ENABLED" = "true" ]; then
-    # Create wrapper script for tailscale serve (waits for tailscale up)
-    cat > /tmp/tailscale-serve.sh << 'TSSERVESCRIPT'
-#!/bin/bash
-set -e
-echo "tailscale-serve: waiting for tailscale to be connected..."
-for i in $(seq 1 30); do
-  if sudo tailscale status 2>/dev/null | grep -q "^100\."; then
-    break
-  fi
-  echo "tailscale-serve: not connected yet (attempt $i/30), retrying in 3s..."
-  sleep 3
-done
-echo "tailscale-serve: running tailscale serve..."
-exec sudo tailscale serve "$@"
-TSSERVESCRIPT
-    chmod +x /tmp/tailscale-serve.sh
-
     cat >> /tmp/supervisord.conf << TSSERVE
 
 [program:tailscale-serve]
-command=/tmp/tailscale-serve.sh --bg http://localhost:${TAILSCALE_SERVE_PORT}
+command=bash -c 'sleep 10 && echo "tailscale-serve: running tailscale serve..." && sudo tailscale serve --bg http://localhost:${TAILSCALE_SERVE_PORT} && echo "tailscale-serve: serve configured successfully"'
 priority=5
 startsecs=0
-startretries=5
-autorestart=false
+autorestart=unexpected
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr

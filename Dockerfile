@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gh \
   git \
   gnupg2 \
+  iptables \
   iproute2 \
   jq \
   less \

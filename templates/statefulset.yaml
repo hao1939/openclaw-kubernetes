@@ -59,7 +59,16 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
+            {{- if and .Values.tailscale.enabled (not .Values.tailscale.userspace) }}
+            {{- $sc := deepCopy .Values.securityContext }}
+            {{- $caps := $sc.capabilities | default dict }}
+            {{- $add := $caps.add | default list }}
+            {{- $_ := set $caps "add" (append $add "NET_ADMIN" | uniq) }}
+            {{- $_ := set $sc "capabilities" $caps }}
+            {{- toYaml $sc | nindent 12 }}
+            {{- else }}
             {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:

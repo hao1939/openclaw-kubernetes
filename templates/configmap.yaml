@@ -157,6 +157,14 @@ data:
     }}
     {{- $_ := set $config "skills" (dict "load" $skillsLoad) }}
     {{- end }}
+    {{- /* Allow insecure auth when Tailscale is enabled (access via HTTP on Tailscale IP) */}}
+    {{- if .Values.tailscale.enabled }}
+    {{- $gw := dig "gateway" (dict) $config }}
+    {{- $cui := dig "controlUi" (dict) $gw }}
+    {{- $_ := set $cui "allowInsecureAuth" true }}
+    {{- $_ := set $gw "controlUi" $cui }}
+    {{- $_ := set $config "gateway" $gw }}
+    {{- end }}
 {{ $config | toPrettyJson | indent 4 }}
   codex-config.toml: |
     # Codex CLI Configuration

@@ -159,13 +159,16 @@ tailscale:
   extraArgs: ""
   # -- Accept DNS configuration from the Tailscale network
   acceptDns: false
-  # -- Use userspace networking (no NET_ADMIN capability needed).
-  # Set to false for kernel networking (needed for subnet routing / exit nodes).
-  # Kernel networking requires adding NET_ADMIN to securityContext.capabilities.add.
-  userspace: true
+  # -- Use userspace networking (no TUN device, no NET_ADMIN needed).
+  # Default is false (kernel networking) which creates a real TUN interface,
+  # making services directly reachable via the Tailscale IP.
+  # Kernel networking requires NET_ADMIN capability (added automatically by the chart).
+  userspace: false
   # -- Tailscale Serve configuration (HTTPS proxy via Tailscale certificates)
   serve:
-    # -- Enable `tailscale serve` to proxy the gateway with Tailscale HTTPS
+    # -- Enable `tailscale serve` to proxy the gateway with Tailscale HTTPS.
+    # Not required for kernel networking (default) since the TUN interface
+    # makes services directly reachable. Useful for HTTPS with auto-certs.
     enabled: false
     # -- Port to proxy (defaults to gateway port)
     port: ""

@@ -112,7 +112,7 @@ After deployment, access the gateway via its Tailscale hostname (e.g. `openclaw-
 |-------|---------|-------------|
 | `tailscale.enabled` | `false` | Enable Tailscale mesh VPN |
 | `tailscale.hostname` | `""` | Hostname prefix on the Tailscale network. Each pod appends its ordinal: `<hostname>-0`, `<hostname>-1`, etc. If empty, uses the pod name. |
-| `tailscale.userspace` | `true` | Use userspace networking (no NET_ADMIN capability needed) |
+| `tailscale.userspace` | `false` | Use userspace networking instead of kernel networking (no NET_ADMIN needed, but requires `tailscale.serve.enabled`) |
 | `tailscale.acceptDns` | `false` | Accept DNS configuration from the Tailscale network |
 | `tailscale.extraArgs` | `""` | Extra arguments passed to `tailscale up` (e.g. `--advertise-routes=10.96.0.0/12`) |
 | `tailscale.serve.enabled` | `false` | Enable `tailscale serve` to proxy the gateway with Tailscale HTTPS certificates |
@@ -125,7 +125,7 @@ After deployment, access the gateway via its Tailscale hostname (e.g. `openclaw-
 <summary>How it works</summary>
 
 - **Per-Pod Node model**: Each StatefulSet pod registers as a unique Tailscale device, so multi-replica works without routing conflicts.
-- **Userspace networking** (default): No `NET_ADMIN` capability needed. Set `tailscale.userspace: false` for kernel networking (required for subnet routing or exit nodes — also add `NET_ADMIN` to `securityContext.capabilities.add`).
+- **Kernel networking** (default): Creates a real TUN interface so services are directly reachable via the Tailscale IP. The chart automatically adds `NET_ADMIN` capability. Set `tailscale.userspace: true` for userspace networking (no capability needed, but requires `tailscale.serve.enabled` for access).
 - **Ephemeral state**: Tailscale state uses `emptyDir` — pods re-authenticate on restart using a reusable auth key. Use a **Reusable + Ephemeral** key from [Tailscale admin](https://login.tailscale.com/admin/settings/keys).
 - **HTTPS via Tailscale Serve**: Enable `tailscale.serve.enabled` to get automatic HTTPS certificates from Tailscale for the gateway.
 
