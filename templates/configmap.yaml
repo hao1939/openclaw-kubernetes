@@ -71,15 +71,17 @@ data:
     {{- $_ := set $agentsMem "defaults" $defaultsMem }}
     {{- $_ := set $config "agents" $agentsMem }}
     {{- end }}
+    {{- /* Default tools profile to "full" so coding/system tools are always available */}}
+    {{- $tools := dict "profile" "full" }}
     {{- /* Enable web search when Brave or Perplexity API key is configured */}}
     {{- if or .Values.secrets.braveApiKey .Values.secrets.perplexityApiKey }}
     {{- $webSearchProvider := "brave" }}
     {{- if .Values.secrets.perplexityApiKey }}
     {{- $webSearchProvider = "perplexity" }}
     {{- end }}
-    {{- $webSearch := dict "enabled" true "provider" $webSearchProvider }}
-    {{- $_ := set $config "tools" (dict "web" (dict "search" $webSearch)) }}
+    {{- $_ := set $tools "web" (dict "search" (dict "enabled" true "provider" $webSearchProvider)) }}
     {{- end }}
+    {{- $_ := set $config "tools" $tools }}
     {{- /* Auto-enable channel plugins when bot tokens are configured */}}
     {{- $pluginEntries := dict }}
     {{- if .Values.secrets.telegramBotToken }}
