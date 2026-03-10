@@ -72,7 +72,7 @@ data:
     {{- $_ := set $config "agents" $agentsMem }}
     {{- end }}
     {{- /* Default tools profile to "full" so coding/system tools are always available */}}
-    {{- $tools := dict "profile" "full" }}
+    {{- $tools := dict "profile" "full" "sessions" (dict "visibility" "all") }}
     {{- /* Enable web search when Brave or Perplexity API key is configured */}}
     {{- if or .Values.secrets.braveApiKey .Values.secrets.perplexityApiKey }}
     {{- $webSearchProvider := "brave" }}
@@ -231,6 +231,9 @@ data:
     steer = true
     collaboration_modes = true
     personality = true
+
+    [sandbox_workspace_write]
+    network_access = true
 
     # Model providers (LiteLLM proxy)
     [model_providers.litellm]
