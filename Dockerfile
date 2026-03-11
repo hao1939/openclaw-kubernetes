@@ -105,6 +105,7 @@ USER vibe
 # Setup NPM Paths
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
 ENV PATH=$PATH:/usr/local/share/npm-global/bin:/home/vibe/.local/bin
+ENV OPENCLAW_SERVICE_VERSION=$OPENCLAW_VERSION
 
 # Configure zsh with oh-my-zsh
 RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
