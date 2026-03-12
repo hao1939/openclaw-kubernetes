@@ -22,6 +22,15 @@ data:
       drop_params: true
     model_list:
     {{- if eq .Values.litellm.secrets.provider "github_copilot" }}
+    - model_name: text-embedding-ada-002
+      model_info:
+        mode: embedding
+      litellm_params:
+        model: github_copilot/text-embedding-ada-002
+        drop_params: true
+        extra_headers:
+          editor-version: "vscode/1.95.0"
+          editor-plugin-version: "copilot-chat/0.26.7"
     - model_name: {{ .Values.litellm.model | quote }}
       {{- if hasPrefix "gpt" .Values.litellm.model }}
       model_info:
@@ -59,8 +68,9 @@ data:
         api_base: {{ .Values.litellm.secrets.apiBase | quote }}
         {{- end }}
     {{- end }}
-    {{- /* Embedding model for memory search — credentials stay in the Secret */}}
-    {{- if $embeddingApiKey }}
+    {{- /* Embedding model for memory search — credentials stay in the Secret.
+       Skip for github_copilot: embedding model is already defined above with Copilot auth. */}}
+    {{- if and $embeddingApiKey (ne .Values.litellm.secrets.provider "github_copilot") }}
     - model_name: {{ .Values.openclaw.memorySearch.model | quote }}
       model_info:
         mode: embedding

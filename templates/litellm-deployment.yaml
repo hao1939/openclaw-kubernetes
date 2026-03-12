@@ -55,10 +55,16 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "openclaw.litellm.secretName" . }}
-          {{- with .Values.litellm.extraEnv }}
           env:
+            - name: HOME
+              value: /home/litellm
+            {{- if eq .Values.litellm.secrets.provider "github_copilot" }}
+            - name: GITHUB_COPILOT_TOKEN_DIR
+              value: {{ printf "%s/github_copilot" .Values.litellm.persistence.mountPath }}
+            {{- end }}
+            {{- with .Values.litellm.extraEnv }}
             {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /health/liveliness
