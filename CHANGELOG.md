@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.31 (2026-03-12)
+
+- Enable GitHub Copilot embeddings for memory search: add `text-embedding-ada-002` model to LiteLLM config for Copilot provider, override default embedding model in OpenClaw config since Copilot only supports `text-embedding-ada-002`
+- Expose `HOME` and `GITHUB_COPILOT_TOKEN_DIR` env vars on LiteLLM deployment for Copilot token discovery
+- Expose service version env var and disable device auth
+- Merge ACPX plugin paths and installs with user-configured values
+
 ## v0.1.30 (2026-03-10)
 
 - Bump LiteLLM image to `main-1.81.12-stable.3`
