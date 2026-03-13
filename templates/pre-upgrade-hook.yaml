@@ -1,0 +1,220 @@
+{{/*
+Pre-upgrade hook: orphan-delete the StatefulSet when immutable fields have changed.
+Kubernetes forbids in-place updates to StatefulSet spec fields other than replicas,
+ordinals, template, updateStrategy, revisionHistoryLimit, persistentVolumeClaimRetentionPolicy,
+and minReadySeconds. This hook detects changes to the immutable fields (serviceName,
+volumeClaimTemplates, podManagementPolicy) and orphan-deletes the StatefulSet so Helm
+can recreate it. Pods keep running as orphans and are re-adopted via label selector.
+
+Selector changes are NOT auto-mitigated — if the selector drifts the hook will fail
+loudly because orphaned pods cannot be re-adopted under a different selector.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "openclaw.fullname" . }}-pre-upgrade
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "openclaw.fullname" . }}-pre-upgrade
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+rules:
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    resourceNames: ["{{ include "openclaw.fullname" . }}"]
+    verbs: ["get", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "openclaw.fullname" . }}-pre-upgrade
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded,hook-failed
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "openclaw.fullname" . }}-pre-upgrade
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "openclaw.fullname" . }}-pre-upgrade
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openclaw.fullname" . }}-pre-upgrade
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: pre-upgrade
+    helm.sh/hook-weight: "0"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "openclaw.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: pre-upgrade-hook
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "openclaw.fullname" . }}-pre-upgrade
+      automountServiceAccountToken: true
+      containers:
+        - name: orphan-delete-sts
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              STS_NAME="{{ include "openclaw.fullname" . }}"
+              NS="{{ .Release.Namespace }}"
+
+              # Expected immutable field values (templated by Helm)
+              EXPECT_SERVICE_NAME="{{ include "openclaw.fullname" . }}"
+              EXPECT_SELECTOR_NAME="{{ include "openclaw.name" . }}"
+              EXPECT_SELECTOR_INSTANCE="{{ .Release.Name }}"
+              EXPECT_SELECTOR_COMPONENT="gateway"
+              {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) .Values.persistence.useStatefulSetVolumeClaim }}
+              EXPECT_HAS_VCT="true"
+              EXPECT_VCT_STORAGE_CLASS="{{ .Values.persistence.storageClass | default "" }}"
+              EXPECT_VCT_ACCESS_MODE="{{ .Values.persistence.accessMode }}"
+              EXPECT_VCT_SIZE="{{ .Values.persistence.size }}"
+              {{- else }}
+              EXPECT_HAS_VCT="false"
+              {{- end }}
+
+              # Check if StatefulSet exists
+              if ! kubectl get statefulset "$STS_NAME" -n "$NS" >/dev/null 2>&1; then
+                echo "StatefulSet $STS_NAME not found, nothing to do"
+                exit 0
+              fi
+
+              CHANGED=""
+
+              # 1. Check serviceName
+              CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.serviceName}')
+              if [ "$CURRENT" != "$EXPECT_SERVICE_NAME" ]; then
+                CHANGED="${CHANGED}serviceName: '${CURRENT}' -> '${EXPECT_SERVICE_NAME}'; "
+              fi
+
+              # 2. Check selector.matchLabels — fail on mismatch, don't auto-orphan
+              #    Orphaned pods keep old labels and cannot be re-adopted under a new selector
+              SELECTOR_CHANGED=""
+              CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.selector.matchLabels.app\.kubernetes\.io/name}')
+              if [ "$CURRENT" != "$EXPECT_SELECTOR_NAME" ]; then
+                SELECTOR_CHANGED="${SELECTOR_CHANGED}app.kubernetes.io/name: '${CURRENT}' -> '${EXPECT_SELECTOR_NAME}'; "
+              fi
+              CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.selector.matchLabels.app\.kubernetes\.io/instance}')
+              if [ "$CURRENT" != "$EXPECT_SELECTOR_INSTANCE" ]; then
+                SELECTOR_CHANGED="${SELECTOR_CHANGED}app.kubernetes.io/instance: '${CURRENT}' -> '${EXPECT_SELECTOR_INSTANCE}'; "
+              fi
+              CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.selector.matchLabels.app\.kubernetes\.io/component}')
+              if [ "$CURRENT" != "$EXPECT_SELECTOR_COMPONENT" ]; then
+                SELECTOR_CHANGED="${SELECTOR_CHANGED}app.kubernetes.io/component: '${CURRENT}' -> '${EXPECT_SELECTOR_COMPONENT}'; "
+              fi
+
+              if [ -n "$SELECTOR_CHANGED" ]; then
+                echo "FATAL: selector.matchLabels changed: ${SELECTOR_CHANGED}"
+                echo "Orphan-delete cannot fix selector drift. Pods must be manually deleted and recreated."
+                echo "Run: kubectl delete statefulset $STS_NAME -n $NS --cascade=foreground"
+                exit 1
+              fi
+
+              # 3. Check podManagementPolicy (chart doesn't set it, so expect OrderedReady)
+              CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.podManagementPolicy}')
+              if [ "$CURRENT" != "OrderedReady" ]; then
+                CHANGED="${CHANGED}podManagementPolicy: '${CURRENT}' -> 'OrderedReady'; "
+              fi
+
+              # 4. Check volumeClaimTemplates
+              CURRENT_VCT_NAMES=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[*].metadata.name}')
+
+              if [ "$EXPECT_HAS_VCT" = "true" ]; then
+                if [ -z "$CURRENT_VCT_NAMES" ]; then
+                  CHANGED="${CHANGED}volumeClaimTemplates: added; "
+                else
+                  # Check VCT spec fields (storageClassName, accessModes, size)
+                  CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].spec.storageClassName}')
+                  if [ "$CURRENT" != "$EXPECT_VCT_STORAGE_CLASS" ]; then
+                    CHANGED="${CHANGED}volumeClaimTemplate storageClassName: '${CURRENT}' -> '${EXPECT_VCT_STORAGE_CLASS}'; "
+                  fi
+                  CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].spec.accessModes[0]}')
+                  if [ "$CURRENT" != "$EXPECT_VCT_ACCESS_MODE" ]; then
+                    CHANGED="${CHANGED}volumeClaimTemplate accessMode: '${CURRENT}' -> '${EXPECT_VCT_ACCESS_MODE}'; "
+                  fi
+                  CURRENT=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].spec.resources.requests.storage}')
+                  if [ "$CURRENT" != "$EXPECT_VCT_SIZE" ]; then
+                    CHANGED="${CHANGED}volumeClaimTemplate size: '${CURRENT}' -> '${EXPECT_VCT_SIZE}'; "
+                  fi
+
+                  # Check VCT metadata labels — detect version-dependent labels from old chart versions
+                  # (openclaw.labels includes helm.sh/chart, app.kubernetes.io/version, app.kubernetes.io/managed-by
+                  # which change on every version bump and are now replaced by selectorLabels)
+                  HAS_CHART_LABEL=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.labels.helm\.sh/chart}')
+                  HAS_VERSION_LABEL=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.labels.app\.kubernetes\.io/version}')
+                  HAS_MANAGED_LABEL=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.volumeClaimTemplates[0].metadata.labels.app\.kubernetes\.io/managed-by}')
+                  if [ -n "$HAS_CHART_LABEL" ] || [ -n "$HAS_VERSION_LABEL" ] || [ -n "$HAS_MANAGED_LABEL" ]; then
+                    CHANGED="${CHANGED}volumeClaimTemplate labels: have version-dependent labels that must be removed; "
+                  fi
+                fi
+              else
+                if [ -n "$CURRENT_VCT_NAMES" ]; then
+                  CHANGED="${CHANGED}volumeClaimTemplates: removed; "
+                fi
+              fi
+
+              # Decision
+              if [ -n "$CHANGED" ]; then
+                echo "Immutable StatefulSet fields changed: ${CHANGED}"
+
+                # Safety: if live retention policy is Delete, patch to Retain first
+                # to prevent PVC garbage collection during the orphan-delete
+                RETENTION=$(kubectl get statefulset "$STS_NAME" -n "$NS" -o jsonpath='{.spec.persistentVolumeClaimRetentionPolicy.whenDeleted}')
+                if [ "$RETENTION" = "Delete" ]; then
+                  echo "Live StatefulSet has whenDeleted=Delete retention policy, patching to Retain first"
+                  kubectl patch statefulset "$STS_NAME" -n "$NS" --type=merge \
+                    -p '{"spec":{"persistentVolumeClaimRetentionPolicy":{"whenDeleted":"Retain","whenScaled":"Retain"}}}'
+                fi
+
+                echo "Orphan-deleting StatefulSet $STS_NAME (pods will keep running)"
+                kubectl delete statefulset "$STS_NAME" -n "$NS" --cascade=orphan
+              else
+                echo "No immutable field changes detected, skipping orphan-delete"
+              fi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 65534
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
