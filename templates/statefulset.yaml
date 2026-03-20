@@ -53,6 +53,31 @@ spec:
             - name: config
               mountPath: /etc/openclaw
               readOnly: true
+      {{- if .Values.doctor.enabled }}
+        - name: doctor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1024
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          command: ["openclaw", "doctor", "--fix", "--non-interactive", "--yes"]
+          env:
+            - name: OPENCLAW_STATE_DIR
+              value: "/home/vibe/.openclaw"
+            - name: OPENCLAW_CONFIG_PATH
+              value: "/home/vibe/.openclaw/openclaw.json"
+          volumeMounts:
+            - name: data
+              mountPath: /home/vibe
+            - name: tmp
+              mountPath: /tmp
+      {{- end }}
       {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
       {{- end }}

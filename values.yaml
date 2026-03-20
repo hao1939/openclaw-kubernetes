@@ -234,6 +234,11 @@ extraVolumes: []
   #   persistentVolumeClaim:
   #     claimName: extra-pvc
 
+# -- Run `openclaw doctor --fix` as an init container on every pod start.
+# Performs health checks and applies recommended repairs before the gateway starts.
+doctor:
+  enabled: true
+
 # -- Init containers
 initContainers: []
 

@@ -237,6 +237,11 @@ extraVolumeMounts: []
 # -- Extra volumes for the pod
 extraVolumes: []
 
+# -- Run `openclaw doctor --fix` as an init container on every pod start
+# Disabled for minimal setup to reduce startup overhead
+doctor:
+  enabled: false
+
 # -- Init containers
 initContainers: []
 
