@@ -155,7 +155,7 @@ data:
        Merge with any user-configured plugins.load.paths and plugins.installs from
        openclaw.config so existing entries are preserved. */}}
     {{- if .Values.openclaw.acpx.enabled }}
-    {{- $acpxPath := "/usr/local/share/npm-global/lib/node_modules/openclaw/extensions/acpx" }}
+    {{- $acpxPath := "/usr/local/share/npm-global/lib/node_modules/openclaw/dist/extensions/acpx" }}
     {{- $existingLoadPaths := dig "plugins" "load" "paths" (list) $config }}
     {{- if not (has $acpxPath $existingLoadPaths) }}
     {{- $existingLoadPaths = append $existingLoadPaths $acpxPath }}

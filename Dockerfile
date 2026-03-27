@@ -4,8 +4,8 @@ LABEL org.opencontainers.image.source="https://github.com/feiskyer/openclaw-kube
 LABEL org.opencontainers.image.description="All-in-one vibe coding environment"
 LABEL org.opencontainers.image.licenses="MIT"
 
-ARG OPENCLAW_VERSION=2026.3.12
-ARG CLAWHUB_VERSION=0.7.0
+ARG OPENCLAW_VERSION=2026.3.24
+ARG CLAWHUB_VERSION=0.9.0
 ARG TTYD_VERSION=1.7.7
 ARG TAILSCALE_VERSION=1.94.2
 ARG TZ=UTC
@@ -128,8 +128,8 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # Remove the generated openclaw.json so it doesn't conflict with our ConfigMap-rendered version.
 RUN openclaw plugins install acpx && \
     rm -f /home/vibe/.openclaw/openclaw.json && \
-    cd /usr/local/share/npm-global/lib/node_modules/openclaw/extensions/acpx && npm install --omit=dev && \
-    ln -sf /usr/local/share/npm-global/lib/node_modules/openclaw/extensions/acpx/node_modules/.bin/acpx /usr/local/share/npm-global/bin/acpx
+    cd /usr/local/share/npm-global/lib/node_modules/openclaw/dist/extensions/acpx && npm install --omit=dev && \
+    ln -sf /usr/local/share/npm-global/lib/node_modules/openclaw/dist/extensions/acpx/node_modules/.bin/acpx /usr/local/share/npm-global/bin/acpx
 
 # Install Claude Code (installs into ~/.local/bin, adds config into existing ~/.claude/)
 RUN curl -fsSL https://claude.ai/install.sh | bash && \

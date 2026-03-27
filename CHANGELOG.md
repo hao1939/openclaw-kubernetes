@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.1.33 (2026-03-27)
+
+- Add `gateway.auth.mode: token` to openclaw.json config so the gateway enables token-based authentication (token is read from `OPENCLAW_GATEWAY_TOKEN` env var at startup)
+- Add image input support and remove hardcoded model parameters
+- Add doctor init container for pre-start health checks
+- Allow setting multiple models in LiteLLM config via `litellm.extraModels`
+- Bump LiteLLM image to `v1.82.3-stable`
+- Bump azure/setup-helm from 4 to 5
+- Add Azure setup/teardown scripts and port-forward helper
+
 ## v0.1.32 (2026-03-13)
 
 - Fix pre-upgrade hook StartError: use the gateway image instead of distroless `registry.k8s.io/kubectl` which lacks `/bin/sh`

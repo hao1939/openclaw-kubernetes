@@ -268,9 +268,16 @@ persistence:
 openclaw:
   # -- OpenClaw gateway configuration (openclaw.json content)
   config:
+    # -- Meta information for config versioning
+    meta:
+      lastTouchedVersion: "2026.3.24"
+      lastTouchedAt: "2026-03-27T05:09:20.093Z"
     # -- Gateway server configuration
     gateway:
+      mode: local
       port: 18789
+      auth:
+        mode: token
       controlUi:
         dangerouslyAllowHostHeaderOriginFallback: true
         dangerouslyDisableDeviceAuth: true
